@@ -157,7 +157,9 @@ namespace RetoBackend.Services
                 using var doc = JsonDocument.Parse(json);
 
                 if (doc.RootElement.ValueKind == JsonValueKind.Array)
-                    return doc.RootElement.EnumerateArray().ToArray();
+                    return doc.RootElement.EnumerateArray()
+                      .Select(e => e.Clone())
+                      .ToArray();
 
                 return null;
             }

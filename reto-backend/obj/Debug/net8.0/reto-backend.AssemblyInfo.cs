@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("reto-backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5c15c2b3d6a51e4b3dd083a1d6f84f7ab7918315")]
 [assembly: System.Reflection.AssemblyProductAttribute("reto-backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("reto-backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
