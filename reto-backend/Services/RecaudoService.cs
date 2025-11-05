@@ -26,7 +26,20 @@ namespace RetoBackend.Services
         {
             int totalSaved = 0;
 
-            // 1️⃣ Obtener token de autenticación
+            Console.WriteLine($"🗓️ Iniciando importación desde {start:yyyy-MM-dd} hasta {end:yyyy-MM-dd}");
+
+            // 1️⃣ Eliminar registros existentes dentro del rango
+            var existentes = _context.Recaudos
+                .Where(r => r.Fecha >= start && r.Fecha <= end);
+            int eliminados = existentes.Count();
+            if (eliminados > 0)
+            {
+                Console.WriteLine($"🧹 Eliminando {eliminados} registros previos en el rango...");
+                _context.Recaudos.RemoveRange(existentes);
+                await _context.SaveChangesAsync();
+            }
+
+            // 2️⃣ Obtener token de autenticación
             var token = await ObtenerTokenAsync();
             if (string.IsNullOrEmpty(token))
             {
@@ -36,7 +49,7 @@ namespace RetoBackend.Services
 
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            // 2️⃣ Recorrer las fechas
+            // 3️⃣ Recorrer las fechas del rango
             for (var fecha = start; fecha <= end; fecha = fecha.AddDays(1))
             {
                 try
@@ -63,7 +76,7 @@ namespace RetoBackend.Services
                                 Sentido = r.GetProperty("sentido").GetString(),
                                 Categoria = r.GetProperty("categoria").GetString(),
                                 Hora = r.GetProperty("hora").GetInt32(),
-                                Cantidad = 1, // se puede ajustar si la API entrega conteo
+                                Cantidad = 1, // Se puede ajustar si la API entrega conteo real
                                 Valor = Convert.ToDecimal(r.GetProperty("valorTabulado").GetDecimal())
                             };
 
@@ -85,7 +98,7 @@ namespace RetoBackend.Services
                                 Categoria = c.GetProperty("categoria").GetString(),
                                 Hora = c.GetProperty("hora").GetInt32(),
                                 Cantidad = c.GetProperty("cantidad").GetInt32(),
-                                Valor = 0 // en conteo no hay valor monetario
+                                Valor = 0 // En conteo no hay valor monetario
                             };
 
                             _context.Recaudos.Add(entidad);
@@ -94,7 +107,7 @@ namespace RetoBackend.Services
                     }
 
                     await _context.SaveChangesAsync();
-                    Console.WriteLine($"✅ Guardados {totalSaved} registros de {fecha:yyyy-MM-dd}");
+                    Console.WriteLine($"✅ Guardados {totalSaved} registros hasta {fecha:yyyy-MM-dd}");
                 }
                 catch (Exception ex)
                 {

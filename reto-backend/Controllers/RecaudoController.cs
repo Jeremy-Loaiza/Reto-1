@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetoBackend.Data;
-using System.Globalization;
 
 namespace RetoBackend.Controllers
 {
@@ -16,11 +15,19 @@ namespace RetoBackend.Controllers
             _context = context;
         }
 
-        // 🔹 GET: /api/Recaudo/conteo/{fecha}
+        // ==========================================================
+        // 🔹 1️⃣ GET: /api/Recaudo/conteo/{fecha}?page=1&pageSize=50
+        // ==========================================================
         [HttpGet("conteo/{fecha}")]
-        public async Task<IActionResult> GetConteoVehiculos(DateTime fecha)
+        public async Task<IActionResult> GetConteoVehiculos(
+            DateTime fecha,
+            int page = 1,
+            int pageSize = 50)
         {
-            var data = await _context.Recaudos
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 500) pageSize = 50;
+
+            var query = _context.Recaudos
                 .Where(r => r.Fecha.Date == fecha.Date)
                 .GroupBy(r => new { r.EstacionNombre, r.Hora })
                 .Select(g => new
@@ -28,17 +35,33 @@ namespace RetoBackend.Controllers
                     EstacionNombre = g.Key.EstacionNombre,
                     Hora = g.Key.Hora,
                     TotalVehiculos = g.Sum(x => x.Cantidad)
-                })
-                .OrderBy(r => r.Hora)
+                });
+
+            var totalRegistros = await query.CountAsync();
+
+            var data = await query
+                .OrderBy(r => r.EstacionNombre)
+                .ThenBy(r => r.Hora)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            if (data.Count == 0)
+            if (!data.Any())
                 return NotFound(new { detail = "No hay datos para la fecha seleccionada." });
 
-            return Ok(data);
+            return Ok(new
+            {
+                totalRegistros,
+                paginaActual = page,
+                tamanioPagina = pageSize,
+                totalPaginas = (int)Math.Ceiling(totalRegistros / (double)pageSize),
+                resultados = data
+            });
         }
 
-        // 🔹 GET: /api/Recaudo/reporte
+        // ==========================================================
+        // 🔹 2️⃣ GET: /api/Recaudo/reporte
+        // ==========================================================
         [HttpGet("reporte")]
         public async Task<IActionResult> GetReporteMensual()
         {
@@ -62,7 +85,20 @@ namespace RetoBackend.Controllers
                 .ThenBy(r => r.EstacionNombre)
                 .ToListAsync();
 
+            if (!data.Any())
+                return NotFound(new { detail = "No hay datos disponibles para generar el reporte." });
+
             return Ok(data);
+        }
+
+        // ==========================================================
+        // 🔹 3️⃣ GET: /api/Recaudo/count
+        // ==========================================================
+        [HttpGet("count")]
+        public async Task<IActionResult> GetTotalRegistros()
+        {
+            var total = await _context.Recaudos.CountAsync();
+            return Ok(new { totalRegistros = total });
         }
     }
 }
