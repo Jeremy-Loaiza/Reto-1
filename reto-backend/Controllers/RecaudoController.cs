@@ -16,18 +16,12 @@ namespace RetoBackend.Controllers
         }
 
         // ==========================================================
-        // 🔹 1️⃣ GET: /api/Recaudo/conteo/{fecha}?page=1&pageSize=50
+        // 🔹 1️⃣ GET: /api/Recaudo/conteo/{fecha}
         // ==========================================================
         [HttpGet("conteo/{fecha}")]
-        public async Task<IActionResult> GetConteoVehiculos(
-            DateTime fecha,
-            int page = 1,
-            int pageSize = 50)
+        public async Task<IActionResult> GetConteoVehiculos(DateTime fecha)
         {
-            if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 500) pageSize = 50;
-
-            var query = _context.Recaudos
+            var data = await _context.Recaudos
                 .Where(r => r.Fecha.Date == fecha.Date)
                 .GroupBy(r => new { r.EstacionNombre, r.Hora })
                 .Select(g => new
@@ -35,28 +29,15 @@ namespace RetoBackend.Controllers
                     EstacionNombre = g.Key.EstacionNombre,
                     Hora = g.Key.Hora,
                     TotalVehiculos = g.Sum(x => x.Cantidad)
-                });
-
-            var totalRegistros = await query.CountAsync();
-
-            var data = await query
+                })
                 .OrderBy(r => r.EstacionNombre)
                 .ThenBy(r => r.Hora)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
                 .ToListAsync();
 
             if (!data.Any())
                 return NotFound(new { detail = "No hay datos para la fecha seleccionada." });
 
-            return Ok(new
-            {
-                totalRegistros,
-                paginaActual = page,
-                tamanioPagina = pageSize,
-                totalPaginas = (int)Math.Ceiling(totalRegistros / (double)pageSize),
-                resultados = data
-            });
+            return Ok(data);
         }
 
         // ==========================================================
