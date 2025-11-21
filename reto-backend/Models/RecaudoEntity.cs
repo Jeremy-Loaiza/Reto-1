@@ -20,11 +20,11 @@ namespace RetoBackend.Models
         [MaxLength(100)]
         public string EstacionNombre { get; set; } = string.Empty;
 
-        // 🔄 Sentido del tráfico (ejemplo: Norte-Sur, Sur-Norte)
+        // 🔄 Sentido del tráfico
         [MaxLength(50)]
         public string? Sentido { get; set; }
 
-        // 🚗 Categoría del vehículo (ejemplo: liviano, pesado)
+        // 🚗 Categoría del vehículo
         [MaxLength(50)]
         public string? Categoria { get; set; }
 
@@ -37,7 +37,7 @@ namespace RetoBackend.Models
         [Range(0, int.MaxValue)]
         public int Cantidad { get; set; }
 
-        // 💰 Valor total recaudado (puede ser 0 si es conteo)
+        // 💰 Valor total recaudado
         [Column(TypeName = "decimal(18,2)")]
         [Range(0, double.MaxValue)]
         public decimal Valor { get; set; }

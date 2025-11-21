@@ -29,7 +29,7 @@ builder.Services.AddCors(options =>
             .WithOrigins(
                 "http://localhost:5500",  // Live Server (VS Code)
                 "http://127.0.0.1:5500", // Alternativa local
-                "http://localhost:4200"   // Si usas Angular CLI más adelante
+                "http://localhost:4200"   // Si uso Angular CLI 
             )
             .AllowAnyHeader()
             .AllowAnyMethod();
