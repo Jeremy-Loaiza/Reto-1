@@ -21,100 +21,109 @@ namespace RetoBackend.Services
             _http = httpClientFactory.CreateClient();
         }
 
-        // ✅ Método principal: importa los datos entre fechas
+        // ✅ Método principal: importa los datos solo del rango indicado
         public async Task<int> ImportRangeAsync(DateTime start, DateTime end)
         {
             int totalSaved = 0;
+            var desde = start.Date;
+            var hasta = end.Date;
 
-            // 1️⃣ Obtener token de autenticación
+            Console.WriteLine($"🗓️ Iniciando importación desde {desde:yyyy-MM-dd} hasta {hasta:yyyy-MM-dd}");
+
+            // 🧹 1️⃣ Limpiar registros EXISTENTES solo dentro del rango
+            var registrosEnRango = _context.Recaudos.Where(r => r.Fecha >= desde && r.Fecha <= hasta);
+            int eliminados = registrosEnRango.Count();
+
+            if (eliminados > 0)
+            {
+                Console.WriteLine($"🧼 Eliminando {eliminados} registros previos en el rango {desde:yyyy-MM-dd} → {hasta:yyyy-MM-dd}");
+                _context.Recaudos.RemoveRange(registrosEnRango);
+                await _context.SaveChangesAsync();
+            }
+
+            // 🔑 2️⃣ Obtener token de autenticación
             var token = await ObtenerTokenAsync();
             if (string.IsNullOrEmpty(token))
             {
                 Console.WriteLine("❌ No se pudo obtener el token de la API externa.");
                 return 0;
             }
-
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            // 2️⃣ Recorrer las fechas
-            for (var fecha = start; fecha <= end; fecha = fecha.AddDays(1))
+            // 🚗 3️⃣ Recorrer cada día del rango
+            for (var fecha = desde; fecha <= hasta; fecha = fecha.AddDays(1))
             {
                 try
                 {
                     Console.WriteLine($"\n📅 Procesando fecha: {fecha:yyyy-MM-dd}");
 
-                    // --- Obtener datos de conteo ---
+                    // --- Obtener datos de conteo y recaudo ---
                     var urlConteo = $"http://23.23.205.17:5200/api/ConteoVehiculos/{fecha:yyyy-MM-dd}";
-                    var conteos = await ObtenerDatosAsync(urlConteo);
-
-                    // --- Obtener datos de recaudo ---
                     var urlRecaudo = $"http://23.23.205.17:5200/api/RecaudoVehiculos/{fecha:yyyy-MM-dd}";
+
+                    var conteos = await ObtenerDatosAsync(urlConteo);
                     var recaudos = await ObtenerDatosAsync(urlRecaudo);
+
+                    var nuevos = new List<RecaudoEntity>();
 
                     // --- Guardar datos de recaudos ---
                     if (recaudos != null)
                     {
-                        foreach (var r in recaudos)
+                        nuevos.AddRange(recaudos.Select(r => new RecaudoEntity
                         {
-                            var entidad = new RecaudoEntity
-                            {
-                                Fecha = fecha,
-                                EstacionNombre = r.GetProperty("estacion").GetString(),
-                                Sentido = r.GetProperty("sentido").GetString(),
-                                Categoria = r.GetProperty("categoria").GetString(),
-                                Hora = r.GetProperty("hora").GetInt32(),
-                                Cantidad = 1, // se puede ajustar si la API entrega conteo
-                                Valor = Convert.ToDecimal(r.GetProperty("valorTabulado").GetDecimal())
-                            };
-
-                            _context.Recaudos.Add(entidad);
-                            totalSaved++;
-                        }
+                            Fecha = fecha,
+                            EstacionNombre = r.GetProperty("estacion").GetString(),
+                            Sentido = r.GetProperty("sentido").GetString(),
+                            Categoria = r.GetProperty("categoria").GetString(),
+                            Hora = r.GetProperty("hora").GetInt32(),
+                            Cantidad = 1,
+                            Valor = Convert.ToDecimal(r.GetProperty("valorTabulado").GetDecimal())
+                        }));
                     }
 
                     // --- Guardar datos de conteos ---
                     if (conteos != null)
                     {
-                        foreach (var c in conteos)
+                        nuevos.AddRange(conteos.Select(c => new RecaudoEntity
                         {
-                            var entidad = new RecaudoEntity
-                            {
-                                Fecha = fecha,
-                                EstacionNombre = c.GetProperty("estacion").GetString(),
-                                Sentido = c.GetProperty("sentido").GetString(),
-                                Categoria = c.GetProperty("categoria").GetString(),
-                                Hora = c.GetProperty("hora").GetInt32(),
-                                Cantidad = c.GetProperty("cantidad").GetInt32(),
-                                Valor = 0 // en conteo no hay valor monetario
-                            };
-
-                            _context.Recaudos.Add(entidad);
-                            totalSaved++;
-                        }
+                            Fecha = fecha,
+                            EstacionNombre = c.GetProperty("estacion").GetString(),
+                            Sentido = c.GetProperty("sentido").GetString(),
+                            Categoria = c.GetProperty("categoria").GetString(),
+                            Hora = c.GetProperty("hora").GetInt32(),
+                            Cantidad = c.GetProperty("cantidad").GetInt32(),
+                            Valor = 0
+                        }));
                     }
 
-                    await _context.SaveChangesAsync();
-                    Console.WriteLine($"✅ Guardados {totalSaved} registros de {fecha:yyyy-MM-dd}");
+                    // --- Insertar solo si hay datos válidos ---
+                    if (nuevos.Any())
+                    {
+                        await _context.Recaudos.AddRangeAsync(nuevos);
+                        await _context.SaveChangesAsync();
+                        totalSaved += nuevos.Count;
+
+                        Console.WriteLine($"✅ {nuevos.Count} registros guardados para {fecha:yyyy-MM-dd}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"⚠️ No se recibieron datos para {fecha:yyyy-MM-dd}");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Error procesando {fecha:yyyy-MM-dd}: {ex.Message}");
+                    Console.WriteLine($"⚠️ Error procesando fecha {fecha:yyyy-MM-dd}: {ex.Message}");
                 }
             }
 
-            Console.WriteLine($"\n🚀 Proceso finalizado. Total registros guardados: {totalSaved}");
+            Console.WriteLine($"\n🚀 Proceso finalizado. Total registros nuevos: {totalSaved}");
             return totalSaved;
         }
 
-        // 🔹 Método auxiliar para obtener token
+        // 🔹 Obtener token desde API externa
         private async Task<string?> ObtenerTokenAsync()
         {
-            var loginData = new
-            {
-                userName = "user",
-                password = "1234"
-            };
-
+            var loginData = new { userName = "user", password = "1234" };
             var json = JsonSerializer.Serialize(loginData);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
@@ -141,7 +150,7 @@ namespace RetoBackend.Services
             }
         }
 
-        // 🔹 Método auxiliar para consumir endpoints externos (GET)
+        // 🔹 Obtener datos JSON (GET)
         private async Task<JsonElement[]>? ObtenerDatosAsync(string url)
         {
             try
@@ -157,7 +166,7 @@ namespace RetoBackend.Services
                 using var doc = JsonDocument.Parse(json);
 
                 if (doc.RootElement.ValueKind == JsonValueKind.Array)
-                    return doc.RootElement.EnumerateArray().ToArray();
+                    return doc.RootElement.EnumerateArray().Select(e => e.Clone()).ToArray();
 
                 return null;
             }
