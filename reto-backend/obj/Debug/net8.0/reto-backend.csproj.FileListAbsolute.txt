@@ -73,3 +73,4 @@ C:\Users\jeremy.loaiza\Desktop\Reto 1\reto-backend\obj\Debug\net8.0\refint\reto-
 C:\Users\jeremy.loaiza\Desktop\Reto 1\reto-backend\obj\Debug\net8.0\reto-backend.pdb
 C:\Users\jeremy.loaiza\Desktop\Reto 1\reto-backend\obj\Debug\net8.0\reto-backend.genruntimeconfig.cache
 C:\Users\jeremy.loaiza\Desktop\Reto 1\reto-backend\obj\Debug\net8.0\ref\reto-backend.dll
+C:\Users\jeremy.loaiza\Desktop\Reto 1\reto-backend\obj\Debug\net8.0\reto-backend.sourcelink.json
