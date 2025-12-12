@@ -40,10 +40,7 @@ Microsoft.AspNet.WebApi.Core	Núcleo Web API
 Microsoft.AspNet.WebApi.Cors	Habilita CORS
 System.Data.SqlClient	Conectividad SQL Server
 Newtonsoft.Json	Manejo de JSON
-Instalación desde Consola NuGet
-En Visual Studio abrir:
-Herramientas → Administrador de paquetes NuGet → Consola
-Ejecutar:
+En Visual Studio code abrir consola y ejecutar:
 Install-Package EntityFramework
 Install-Package Microsoft.AspNet.WebApi
 Install-Package Microsoft.AspNet.WebApi.Core
